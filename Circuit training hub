@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Circuit Training Hub</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bungee&family=Fraunces:wght@400;600&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#120f1a; --bg2:#1a1626; --panel:#1e192b; --panel-light:#241e32;
+  --gold:#e8b34c; --gold-dark:#93691f;
+  --paper:#EDEAE2; --paper2:#f7f4ec; --ink:#26241F; --ink-soft:#5B584E;
+  --moss:#5B6B4C; --moss-deep:#414D37;
+  --rust:#A6543A; --sky:#5F7A85; --sand:#CDC2A3; --sand-line:#DAD0B4;
+  --text:#f4efe4; --muted:#9a92ad;
+}
+*{ box-sizing:border-box; }
+html{ scroll-behavior:smooth; }
+body{ margin:0; padding:0; background:var(--bg); color:var(--text); font-family:Inter,Arial,sans-serif; -webkit-font-smoothing:antialiased; }
+button, input, select{ font:inherit; }
+
+/* TABS */
+.tab-bar{ position:sticky; top:0; z-index:1000; background:rgba(18,15,26,.97); backdrop-filter:blur(12px); border-bottom:1px solid #302840; padding:10px 12px; }
+.tabs{ width:100%; max-width:760px; margin:auto; display:grid; grid-template-columns:repeat(3,1fr); gap:7px; }
+.tab{ border:1px solid #3a304f; background:#1b1725; color:#9a92ad; padding:11px 7px; border-radius:8px; cursor:pointer; font-family:"Space Grotesk",sans-serif; font-size:13px; font-weight:600; transition:.15s; }
+.tab:hover{ border-color:var(--gold); color:var(--gold); }
+.tab.active{ background:var(--gold); color:#241705; border-color:var(--gold); }
+
+.page{ display:none; }
+.page.active{ display:block; }
+
+/* WHEEL PAGE */
+.wheel-page{ min-height:calc(100vh - 58px); padding:30px 16px 60px; background: radial-gradient(ellipse at 50% -10%, #2a2140 0%, transparent 55%), var(--bg); }
+.wheel-stage{ width:100%; max-width:760px; margin:auto; }
+.eyebrow{ font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); text-align:center; margin:0 0 6px; }
+.wheel-page h1{ font-family:Bungee,sans-serif; font-size:clamp(28px,5.5vw,44px); text-align:center; margin:0 0 6px; }
+.wheel-sub{ text-align:center; color:var(--muted); font-size:14px; line-height:1.5; margin:0 auto 26px; max-width:520px; }
+
+.cabinet{ background:linear-gradient(180deg, #2a2338 0%, var(--panel) 12%, var(--panel) 100%); border-radius:22px; padding:22px; border:1px solid #352b49; box-shadow:0 30px 60px -20px rgba(0,0,0,.6); display:flex; gap:18px; }
+.machine-body{ flex:1; min-width:0; }
+
+.reels{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:18px; }
+.reel{ background:var(--bg2); border-radius:12px; padding:12px 8px 14px; text-align:center; position:relative; overflow:hidden; border:1px solid #2c2440; min-height:150px; display:flex; flex-direction:column; transition:transform .2s, border-color .2s, box-shadow .2s; }
+.reel::before{ content:''; position:absolute; top:0; left:0; right:0; height:2px; background:var(--cat-color,var(--gold)); box-shadow:0 0 12px var(--cat-color,var(--gold)); }
+.reel-label{ font-family:"Space Mono",monospace; font-size:9.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--cat-color,var(--muted)); margin:6px 0 10px; font-weight:700; }
+.reel-window{ flex:1; display:flex; align-items:center; justify-content:center; padding:4px; }
+.reel-value{ font-size:14px; font-weight:600; line-height:1.3; }
+.reel.spinning .reel-value{ color:var(--muted); }
+.reel.landed{ animation:landPulse .5s ease-out; }
+@keyframes landPulse{ 0%{ box-shadow:inset 0 0 0 0 var(--cat-color); } 30%{ box-shadow:inset 0 0 24px 0 var(--cat-color); } 100%{ box-shadow:inset 0 0 0 0 var(--cat-color); } }
+.reel-dot{ width:6px; height:6px; border-radius:50%; background:var(--cat-color,var(--gold)); margin:auto; }
+
+.wheel-controls{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.spin-btn{ font-family:Bungee,sans-serif; font-size:15px; color:#241705; background:linear-gradient(180deg, #f6cd6e, var(--gold), #c78f2f); border:0; border-radius:999px; padding:14px 30px; cursor:pointer; box-shadow:0 8px 0 var(--gold-dark), 0 12px 20px rgba(0,0,0,.4); }
+.spin-btn:active{ transform:translateY(6px); box-shadow:0 2px 0 var(--gold-dark); }
+.spin-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.reroll-wrap{ display:flex; align-items:center; gap:10px; }
+.reroll-btn{ font-size:13px; font-weight:600; color:var(--text); background:transparent; border:1px solid #3c3252; border-radius:999px; padding:10px 18px; cursor:pointer; }
+.reroll-btn:hover:not(:disabled){ border-color:var(--gold); color:var(--gold); }
+.reroll-btn:disabled{ opacity:.35; }
+.reroll-count{ font-family:"Space Mono",monospace; font-size:11px; color:#655c78; }
+
+.lever-track{ width:52px; display:flex; justify-content:center; }
+.lever{ width:14px; height:150px; background:linear-gradient(90deg, #3a304f, #241d33, #3a304f); border-radius:8px; position:relative; cursor:pointer; }
+.lever-knob{ position:absolute; left:50%; top:0; width:32px; height:32px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #ff6b6b, #b02b3c 70%); transform:translate(-50%,-6px); transition:transform .35s cubic-bezier(.34,1.6,.4,1); }
+.lever.pulled .lever-knob{ transform:translate(-50%,108px); }
+
+.wheel-transfer{ display:none; margin-top:18px; background:#211b2e; border:1px solid #3b304e; border-radius:12px; padding:18px; }
+.wheel-transfer.show{ display:block; animation:fadeUp .25s ease-out; }
+@keyframes fadeUp{ from{ opacity:0; transform:translateY(5px); } to{ opacity:1; transform:translateY(0); } }
+.transfer-title{ font-family:Fraunces,serif; font-size:20px; margin-bottom:5px; }
+.transfer-text{ color:var(--muted); font-size:13px; line-height:1.5; margin-bottom:14px; }
+.transfer-results{ display:grid; grid-template-columns:repeat(2,1fr); gap:8px; margin-bottom:15px; }
+.transfer-result{ border:1px solid #3a304f; background:#181420; padding:10px 12px; border-radius:7px; }
+.transfer-result span{ display:block; color:#70677f; font-family:"Space Mono",monospace; font-size:9px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:4px; }
+.transfer-result strong{ font-size:13px; line-height:1.3; }
+.transfer-actions{ display:flex; gap:8px; }
+.transfer-btn{ flex:1; border-radius:7px; padding:12px; cursor:pointer; font-weight:700; border:1px solid #443857; }
+.transfer-confirm{ background:var(--gold); color:#241705; border-color:var(--gold); }
+.transfer-cancel{ background:transparent; color:var(--text); }
+
+/* GUIDE */
+.guide-page{ background:var(--paper); color:var(--ink); min-height:calc(100vh - 58px); padding:30px 16px 70px; }
+.guide-wrap{ max-width:1000px; margin:auto; }
+.guide-page h1{ font-family:Fraunces,serif; font-size:36px; margin:0 0 8px; }
+.guide-sub{ color:var(--ink-soft); font-size:14px; line-height:1.5; margin-bottom:28px; }
+.table-container{ width:100%; overflow-x:auto; }
+.guide-table{ width:100%; border-collapse:collapse; font-size:15px; background:var(--paper2); border:1px solid var(--sand-line); }
+.guide-table th{ text-align:left; font-weight:600; padding:14px 12px; border-bottom:2px solid var(--sand); white-space:nowrap; }
+.guide-table td{ padding:18px 12px; border-bottom:1px solid var(--sand-line); vertical-align:top; line-height:1.4; }
+.guide-table td:first-child{ font-weight:600; }
+.mobile-guide{ display:none; }
+.guide-card{ border:1px solid var(--sand-line); background:var(--paper2); border-radius:5px; padding:17px; margin-bottom:13px; }
+.guide-card-title{ font-family:Fraunces,serif; font-size:19px; font-weight:600; margin-bottom:14px; }
+.guide-grid{ display:grid; grid-template-columns:1fr 1fr; gap:13px 20px; }
+.guide-label{ font-family:"IBM Plex Mono",monospace; font-size:9px; text-transform:uppercase; letter-spacing:.08em; color:#777; margin-bottom:3px; }
+.guide-value{ font-size:14px; }
+.guide-purpose{ grid-column:1/-1; border-top:1px solid #eee; padding-top:12px; }
+
+/* TRAINER */
+.trainer-page{ background:var(--paper); color:var(--ink); min-height:calc(100vh - 58px); padding:30px 16px 70px; }
+.trainer-wrap{ max-width:620px; margin:auto; }
+.trainer-header{ margin-bottom:28px; }
+.trainer-eyebrow{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--moss-deep); margin-bottom:7px; }
+.trainer-page h1{ font-family:Fraunces,serif; font-size:36px; line-height:1.05; margin:0 0 9px; }
+.trainer-header p{ color:var(--ink-soft); font-size:14px; line-height:1.5; margin:0; }
+.trainer-card{ background:var(--paper2); border:1px solid var(--sand-line); padding:22px; margin-bottom:18px; border-radius:3px; }
+.trainer-card h2{ font-family:Fraunces,serif; font-size:20px; margin:0 0 5px; }
+.trainer-sub{ color:var(--ink-soft); font-size:13px; line-height:1.5; margin:0 0 18px; }
+
+.preset-box{ margin-bottom:20px; }
+.preset-box label{ display:block; font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:6px; }
+select, input{ width:100%; border:1px solid var(--sand); background:var(--paper); color:var(--ink); border-radius:2px; padding:11px; font-family:"IBM Plex Mono",monospace; font-size:14px; }
+.preset-note{ margin-top:8px; color:var(--ink-soft); font-size:12px; line-height:1.4; }
+
+.settings{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.trainer-card label{ display:block; font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-soft); margin-bottom:6px; }
+
+.exercise-list{ display:flex; flex-direction:column; gap:9px; }
+.exercise-row{ display:grid; grid-template-columns:42px 1fr; align-items:center; gap:10px; }
+.exercise-number{ font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--ink-soft); text-align:center; }
+.exercise-row input{ font-family:Inter,sans-serif; font-size:14px; }
+
+.transfer-notice{ display:none; background:#e4eadc; border:1px solid #bdc9ae; color:#38442f; padding:12px 14px; margin-bottom:18px; border-radius:3px; font-size:13px; line-height:1.45; }
+.transfer-notice.show{ display:block; }
+
+.main-button{ width:100%; border:0; border-radius:2px; padding:15px; background:var(--moss-deep); color:var(--paper); font-family:Fraunces,serif; font-size:17px; font-weight:600; cursor:pointer; }
+.main-button:hover{ background:var(--ink); }
+
+/* TIMER */
+#timerScreen{ display:none; text-align:center; }
+.timer-card{ background:var(--ink); color:var(--paper); border-radius:3px; padding:35px 22px 28px; }
+.timer-status{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--sand); margin-bottom:10px; }
+.exercise-name{ font-family:Fraunces,serif; font-size:30px; line-height:1.1; margin-bottom:10px; }
+.phase{ display:inline-block; padding:5px 11px; border:1px solid var(--sand); border-radius:20px; font-family:"IBM Plex Mono",monospace; font-size:10px; text-transform:uppercase; letter-spacing:.08em; margin-bottom:12px; }
+.phase.work{ background:var(--moss-deep); border-color:var(--moss-deep); }
+.phase.rest{ background:var(--sky); border-color:var(--sky); }
+.phase.countdown{ background:var(--rust); border-color:var(--rust); }
+
+.time{ font-family:"IBM Plex Mono",monospace; font-size:clamp(65px,18vw,110px); font-weight:500; line-height:1; margin:8px 0 18px; letter-spacing:-.05em; }
+
+.progress{ height:8px; background:#4A4943; border-radius:10px; overflow:hidden; margin:0 auto 15px; max-width:420px; }
+.progress-bar{ height:100%; width:100%; background:var(--sand); transform-origin:left center; will-change:transform; }
+
+.next-up{ display:flex; flex-direction:column; gap:3px; margin:0 auto 8px; padding:10px 12px; max-width:420px; background:#33322e; border:1px solid #4b4943; border-radius:3px; }
+.next-label{ font-family:"IBM Plex Mono",monospace; font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#aaa696; }
+.next-name{ font-family:Fraunces,serif; font-size:18px; color:var(--paper); }
+
+.round-info{ font-family:"IBM Plex Mono",monospace; font-size:12px; color:var(--sand); }
+
+.timer-controls{ display:flex; gap:9px; margin-top:18px; }
+.control{ flex:1; border:1px solid #55534C; background:#33322E; color:var(--paper); padding:12px; border-radius:2px; cursor:pointer; font-family:Inter,sans-serif; font-size:13px; }
+.control:hover{ background:#45443F; }
+
+.finish{ display:none; font-family:Fraunces,serif; font-size:34px; padding:35px 0; }
+.summary{ margin-top:18px; background:var(--paper2); border:1px solid var(--sand-line); padding:18px; text-align:left; }
+.summary-title{ font-family:Fraunces,serif; font-size:20px; margin-bottom:10px; }
+.summary p{ margin:5px 0; color:var(--ink-soft); font-size:13px; }
+.back-button{ margin-top:12px; background:transparent; color:var(--ink); border:1px solid var(--sand); }
+
+/* MOBILE */
+@media(max-width:600px){
+  .tab-bar{ padding:8px; }
+  .tabs{ gap:5px; }
+  .tab{ font-size:11px; padding:10px 4px; }
+  .wheel-page{ padding:22px 10px 50px; }
+  .reels{ grid-template-columns:repeat(2,1fr); }
+  .cabinet{ flex-direction:column; padding:15px; gap:14px; }
+  .reel{ min-height:135px; }
+  .lever-track{ width:100%; padding-top:0; }
+  .lever{ width:100%; height:34px; }
+  .lever-knob{ top:50%; left:0; transform:translate(6px,-50%); }
+  .lever.pulled .lever-knob{ transform:translate(calc(100% + 6px), -50%); }
+  .wheel-controls{ justify-content:center; }
+  .transfer-results{ grid-template-columns:1fr 1fr; }
+  .transfer-actions{ flex-direction:column; }
+  .guide-page, .trainer-page{ padding:22px 12px 50px; }
+  .guide-page h1, .trainer-page h1{ font-size:29px; }
+  .table-container{ display:none; }
+  .mobile-guide{ display:block; }
+  .settings{ grid-template-columns:1fr; }
+  .timer-card{ padding:28px 16px; }
+  .exercise-name{ font-size:27px; }
+  .time{ font-size:76px; }
+}
+@media(max-width:380px){
+  .tab{ font-size:10px; }
+  .reels{ gap:7px; }
+  .reel{ padding:10px 6px 12px; }
+  .reel-value{ font-size:12.5px; }
+}
+</style>
+</head>
+
+<body>
+
+<nav class="tab-bar">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('wheelPage',this)">🎰 Wheel</button>
+    <button class="tab" onclick="showTab('guidePage',this)">📋 Training Guide</button>
+    <button class="tab" onclick="showTab('trainerPage',this)">⏱ Circuit Trainer</button>
+  </div>
+</nav>
+
+<!-- WHEEL -->
+<section id="wheelPage" class="page wheel-page active">
+  <div class="wheel-stage">
+    <p class="eyebrow">Today's Circuit</p>
+    <h1>The Wheel Decides</h1>
+    <p class="wheel-sub">Four move types. Four exercises. Let the wheel build your circuit.</p>
+
+    <div class="cabinet">
+      <div class="machine-body">
+        <div class="reels" id="reels"></div>
+
+        <div class="wheel-controls">
+          <button class="spin-btn" id="spinBtn">PULL</button>
+          <div class="reroll-wrap">
+            <button class="reroll-btn" id="rerollBtn">Reroll</button>
+            <span class="reroll-count" id="rerollCount">2 left</span>
+          </div>
+        </div>
+
+        <div class="wheel-transfer" id="wheelTransfer">
+          <div class="transfer-title">Your circuit is ready</div>
+          <div class="transfer-text">Send these four results to the Circuit Trainer? You can still edit the exercise names after they transfer.</div>
+          <div class="transfer-results" id="transferResults"></div>
+          <div class="transfer-actions">
+            <button class="transfer-btn transfer-confirm" onclick="sendWheelToTrainer()">✓ Send to Circuit Trainer</button>
+            <button class="transfer-btn transfer-cancel" onclick="dismissTransfer()">Not Yet</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="lever-track">
+        <div class="lever" id="lever">
+          <div class="lever-knob"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- GUIDE -->
+<section id="guidePage" class="page guide-page">
+  <div class="guide-wrap">
+    <h1>Beginner → experienced → advanced</h1>
+    <div class="guide-sub">Progress by increasing work, reducing recovery, and eventually adding more circuits — not by making every session harder.</div>
+
+    <div class="table-container">
+      <table class="guide-table">
+        <thead>
+          <tr><th>Level</th><th>Exercises</th><th>Work</th><th>Rest</th><th>Circuits</th><th>Total Work</th><th>Intensity</th><th>Purpose</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Starting / Beginner</td><td>4</td><td>20 sec</td><td>40 sec</td><td>2</td><td>3–4 min</td><td>RPE 5–6</td><td>Learn to sustain repeated effort</td></tr>
+          <tr><td>Beginner+</td><td>4</td><td>30 sec</td><td>30 sec</td><td>2</td><td>4 min</td><td>RPE 6–7</td><td>Build basic conditioning</td></tr>
+          <tr><td>Intermediate</td><td>4–5</td><td>30 sec</td><td>30 sec</td><td>3</td><td>6–8 min</td><td>RPE 7</td><td>General fitness + stamina</td></tr>
+          <tr><td>Intermediate+</td><td>4–5</td><td>40 sec</td><td>30 sec</td><td>3</td><td>8–10 min</td><td>RPE 7–8</td><td>Repeated-effort capacity</td></tr>
+          <tr><td>Advanced</td><td>5–6</td><td>45 sec</td><td>30 sec</td><td>3</td><td>10–13 min</td><td>RPE 7–8</td><td>Strong general conditioning</td></tr>
+          <tr><td>Advanced / Full Session</td><td>5–6</td><td>60 sec</td><td>30 sec</td><td>3</td><td>15–18 min</td><td>RPE 8</td><td>Serious conditioning session</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="mobile-guide">
+      <div class="guide-card"><div class="guide-card-title">Starting / Beginner</div>
+        <div class="guide-grid">
+          <div><div class="guide-label">Exercises</div><div class="guide-value">4</div></div>
+          <div><div class="guide-label">Work</div><div class="guide-value">20 sec</div></div>
+          <div><div class="guide-label">Rest</div><div class="guide-value">40 sec</div></div>
+          <div><div class="guide-label">Circuits</div><div class="guide-value">2</div></div>
+          <div><div class="guide-label">Intensity</div><div class="guide-value">RPE 5–6</div></div>
+          <div class="guide-purpose"><div class="guide-label">Purpose</div><div class="guide-value">Learn to sustain repeated effort</div></div>
+        </div>
+      </div>
+
+      <div class="guide-card"><div class="guide-card-title">Beginner+</div>
+        <div class="guide-grid">
+          <div><div class="guide-label">Exercises</div><div class="guide-value">4</div></div>
+          <div><div class="guide-label">Work</div><div class="guide-value">30 sec</div></div>
+          <div><div class="guide-label">Rest</div><div class="guide-value">30 sec</div></div>
+          <div><div class="guide-label">Circuits</div><div class="guide-value">2</div></div>
+          <div><div class="guide-label">Intensity</div><div class="guide-value">RPE 6–7</div></div>
+          <div class="guide-purpose"><div class="guide-label">Purpose</div><div class="guide-value">Build basic conditioning</div></div>
+        </div>
+      </div>
+
+      <div class="guide-card"><div class="guide-card-title">Intermediate</div>
+        <div class="guide-grid">
+          <div><div class="guide-label">Exercises</div><div class="guide-value">4–5</div></div>
+          <div><div class="guide-label">Work</div><div class="guide-value">30 sec</div></div>
+          <div><div class="guide-label">Rest</div><div class="guide-value">30 sec</div></div>
+          <div><div class="guide-label">Circuits</div><div class="guide-value">3</div></div>
+          <div><div class="guide-label">Intensity</div><div class="guide-value">RPE 7</div></div>
+          <div class="guide-purpose"><div class="guide-label">Purpose</div><div class="guide-value">General fitness + stamina</div></div>
+        </div>
+      </div>
+
+      <div class="guide-card"><div class="guide-card-title">Intermediate+</div>
+        <div class="guide-grid">
+          <div><div class="guide-label">Exercises</div><div class="guide-value">4–5</div></div>
+          <div><div class="guide-label">Work</div><div class="guide-value">40 sec</div></div>
+          <div><div class="guide-label">Rest</div><div class="guide-value">30 sec</div></div>
+          <div><div class="guide-label">Circuits</div><div class="guide-value">3</div></div>
+          <div><div class="guide-label">Intensity</div><div class="guide-value">RPE 7–8</div></div>
+          <div class="guide-purpose"><div class="guide-label">Purpose</div><div class="guide-value">Repeated-effort capacity</div></div>
+        </div>
+      </div>
+
+      <div class="guide-card"><div class="guide-card-title">Advanced</div>
+        <div class="guide-grid">
+          <div><div class="guide-label">Exercises</div><div class="guide-value">5–6</div></div>
+          <div><div class="guide-label">Work</div><div class="guide-value">45 sec</div></div>
+          <div><div class="guide-label">Rest</div><div class="guide-value">30 sec</div></div>
+          <div><div class="guide-label">Circuits</div><div class="guide-value">3</div></div>
+          <div><div class="guide-label">Intensity</div><div class="guide-value">RPE 7–8</div></div>
+          <div class="guide-purpose"><div class="guide-label">Purpose</div><div class="guide-value">Strong general conditioning</div></div>
+        </div>
+      </div>
+
+      <div class="guide-card"><div class="guide-card-title">Advanced / Full Session</div>
+        <div class="guide-grid">
+          <div><div class="guide-label">Exercises</div><div class="guide-value">5–6</div></div>
+          <div><div class="guide-label">Work</div><div class="guide-value">60 sec</div></div>
+          <div><div class="guide-label">Rest</div><div class="guide-value">30 sec</div></div>
+          <div><div class="guide-label">Circuits</div><div class="guide-value">3</div></div>
+          <div><div class="guide-label">Intensity</div><div class="guide-value">RPE 8</div></div>
+          <div class="guide-purpose"><div class="guide-label">Purpose</div><div class="guide-value">Serious conditioning session</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRAINER -->
+<section id="trainerPage" class="page trainer-page">
+  <div class="trainer-wrap">
+    <header class="trainer-header">
+      <div class="trainer-eyebrow">Work · Rest · Repeat</div>
+      <h1>Circuit Trainer</h1>
+      <p>Choose a training-guide preset or build your own circuit. Wheel results can be transferred directly into your exercise list.</p>
+    </header>
+
+    <div id="setup">
+      <div class="transfer-notice" id="transferNotice">
+        <strong>Wheel results transferred.</strong><br>
+        Your wheel exercises have been added below. You can rename or replace any of them before starting the circuit.
+      </div>
+
+      <div class="trainer-card">
+        <h2>1. Timing</h2>
+        <p class="trainer-sub">Choose a training-guide preset, or select Custom and control the timing yourself. Every circuit starts with a 10-second get-ready countdown.</p>
+
+        <div class="preset-box">
+          <label for="preset">Training guide preset</label>
+          <select id="preset">
+            <option value="beginner">Starting / Beginner — 20s / 40s · 2 rounds</option>
+            <option value="beginnerPlus">Beginner+ — 30s / 30s · 2 rounds</option>
+            <option value="intermediate" selected>Intermediate — 30s / 30s · 3 rounds</option>
+            <option value="intermediatePlus">Intermediate+ — 40s / 30s · 3 rounds</option>
+            <option value="advanced">Advanced — 45s / 30s · 3 rounds</option>
+            <option value="advancedFull">Advanced / Full Session — 60s / 30s · 3 rounds</option>
+            <option value="custom">Custom</option>
+          </select>
+          <div class="preset-note" id="presetNote">General fitness + stamina · RPE 7</div>
+        </div>
+
+        <div class="settings">
+          <div><label for="workTime">Work seconds</label><input id="workTime" type="number" min="1" value="30"></div>
+          <div><label for="restTime">Rest seconds</label><input id="restTime" type="number" min="0" value="30"></div>
+          <div><label for="rounds">Circuit rounds</label><input id="rounds" type="number" min="1" value="3"></div>
+        </div>
+      </div>
+
+      <div class="trainer-card">
+        <h2>2. Exercise Names</h2>
+        <p class="trainer-sub">These can be filled automatically by the wheel, or entered manually. One circuit means going through the entire list once.</p>
+
+        <div class="settings" style="margin-bottom:18px;">
+          <div><label for="exerciseCount">Number of exercises</label><input id="exerciseCount" type="number" min="1" max="20" value="4"></div>
+        </div>
+
+        <div id="exerciseList" class="exercise-list"></div>
+      </div>
+
+      <button class="main-button" onclick="startWorkout()">Start Circuit</button>
+    </div>
+
+    <div id="timerScreen">
+      <div class="timer-card">
+        <div class="timer-status" id="timerStatus">Get Ready</div>
+        <div class="exercise-name" id="exerciseName">Get Ready</div>
+        <div class="phase countdown" id="phase">Starting In</div>
+        <div class="time" id="time">10</div>
+
+        <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+        <div class="next-up" id="nextUp">
+          <div class="next-label">Up next</div>
+          <div class="next-name" id="nextName">Exercise 1</div>
+        </div>
+
+        <div class="round-info" id="roundInfo">Exercise 1 of 4</div>
+
+        <div class="timer-controls">
+          <button class="control" onclick="togglePause()" id="pauseButton">Pause</button>
+          <button class="control" onclick="skipInterval()">Skip</button>
+          <button class="control" onclick="stopWorkout()">Stop</button>
+        </div>
+
+        <div class="finish" id="finish">Circuit Complete.</div>
+      </div>
+
+      <div class="summary" id="summary"></div>
+      <button class="main-button back-button" onclick="resetWorkout()">Build Another Circuit</button>
+    </div>
+  </div>
+</section>
+
+<script>
+/* TAB SYSTEM */
+function showTab(pageId,button){
+  document.querySelectorAll(".page").forEach(page=>page.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(tab=>tab.classList.remove("active"));
+  document.getElementById(pageId).classList.add("active");
+  button.classList.add("active");
+}
+
+/* WHEEL DATA */
+const CATEGORIES = [
+  { label:"Explosive", color:"#d1495b", moves:["Squat Jumps","Burpees","Broad Jumps","Skater Jumps","Fast Mountain Climbers","Tuck Jumps"] },
+  { label:"Sustained Cardio", color:"#3fa796", moves:["Jumping Jacks","High Knees","Jump Rope (no rope)","Butt Kicks","Plank Jacks","Lateral Shuffles"] },
+  { label:"Isometric", color:"#8a6fdf", moves:["Plank Hold","Side Plank – Left","Side Plank – Right","Hollow Body Hold","Wall Sit","Bear Crawl Hold"] },
+  { label:"Grip / Forearm", color:"#4f83cc", moves:["Dead Hang","Towel Grip Hold","Fist Squeeze Hold","Farmer Carry","Gi Grip Hold","Wrist Curls"] }
+];
+
+const reelsEl = document.getElementById("reels");
+const spinBtn = document.getElementById("spinBtn");
+const rerollBtn = document.getElementById("rerollBtn");
+const rerollCountEl = document.getElementById("rerollCount");
+const lever = document.getElementById("lever");
+const wheelTransfer = document.getElementById("wheelTransfer");
+const transferResults = document.getElementById("transferResults");
+
+let rerollsLeft = 2, spinning = false, hasSpunOnce = false, wheelResults = [];
+
+CATEGORIES.forEach(category=>{
+  const reel = document.createElement("div");
+  reel.className = "reel";
+  reel.style.setProperty("--cat-color", category.color);
+  reel.innerHTML = `<div class="reel-label">${category.label}</div><div class="reel-window"><div class="reel-value">—</div></div><div class="reel-dot"></div>`;
+  reelsEl.appendChild(reel);
+});
+
+function randomMove(category){ return category.moves[Math.floor(Math.random()*category.moves.length)]; }
+
+function spinOneReel(reelEl, category, stopDelay, finalValue){
+  const valueEl = reelEl.querySelector(".reel-value");
+  reelEl.classList.add("spinning"); reelEl.classList.remove("landed");
+  let elapsed = 0, interval = 55;
+  function tick(){
+    valueEl.textContent = randomMove(category);
+    elapsed += interval;
+    const progress = elapsed / stopDelay;
+    interval = 55 + progress*progress*160;
+    if(elapsed < stopDelay){ setTimeout(tick, interval); }
+    else{
+      valueEl.textContent = finalValue;
+      reelEl.classList.remove("spinning");
+      reelEl.classList.add("landed");
+    }
+  }
+  tick();
+}
+
+function pullLever(){
+  lever.classList.add("pulled");
+  setTimeout(()=>lever.classList.remove("pulled"), 420);
+}
+
+function spinAll(){
+  if(spinning) return;
+  spinning = true;
+  spinBtn.disabled = true; rerollBtn.disabled = true;
+  wheelTransfer.classList.remove("show");
+  pullLever();
+
+  const reelEls = reelsEl.querySelectorAll(".reel");
+  const baseDelay = 650, stagger = 260;
+  wheelResults = [];
+
+  CATEGORIES.forEach((category,index)=>{
+    const finalValue = randomMove(category);
+    wheelResults.push(finalValue);
+    spinOneReel(reelEls[index], category, baseDelay + index*stagger, finalValue);
+  });
+
+  const totalTime = baseDelay + (CATEGORIES.length-1)*stagger + 150;
+  setTimeout(()=>{
+    spinning = false;
+    spinBtn.disabled = false;
+    hasSpunOnce = true;
+    rerollBtn.disabled = rerollsLeft <= 0;
+    showTransferConfirmation();
+  }, totalTime);
+}
+
+function showTransferConfirmation(){
+  transferResults.innerHTML = "";
+  wheelResults.forEach((exercise,index)=>{
+    const category = CATEGORIES[index];
+    const card = document.createElement("div");
+    card.className = "transfer-result";
+    card.innerHTML = `<span>${category.label}</span><strong>${exercise}</strong>`;
+    transferResults.appendChild(card);
+  });
+  wheelTransfer.classList.add("show");
+}
+
+function dismissTransfer(){ wheelTransfer.classList.remove("show"); }
+
+function sendWheelToTrainer(){
+  if(!wheelResults || wheelResults.length===0) return;
+  const requiredCount = wheelResults.length;
+  exerciseCountInput.value = requiredCount;
+  renderExerciseInputs(wheelResults);
+  presetSelect.value = "custom";
+  presetNote.textContent = "Wheel-generated circuit · timing can still be changed.";
+  document.getElementById("transferNotice").classList.add("show");
+  wheelTransfer.classList.remove("show");
+  const trainerTab = document.querySelectorAll(".tab")[2];
+  showTab("trainerPage", trainerTab);
+  window.scrollTo({ top:0, behavior:"smooth" });
+}
+
+function doReroll(){
+  if(rerollsLeft<=0 || spinning) return;
+  rerollsLeft--;
+  rerollCountEl.textContent = rerollsLeft===0 ? "none left" : rerollsLeft+" left";
+  spinAll();
+}
+
+spinBtn.addEventListener("click", spinAll);
+lever.addEventListener("click", spinAll);
+rerollBtn.addEventListener("click", doReroll);
+rerollBtn.disabled = true;
+
+/* TRAINING PRESETS */
+const PRESETS = {
+  beginner:{ work:20, rest:40, rounds:2, exercises:4, note:"Learn to sustain repeated effort · RPE 5–6" },
+  beginnerPlus:{ work:30, rest:30, rounds:2, exercises:4, note:"Build basic conditioning · RPE 6–7" },
+  intermediate:{ work:30, rest:30, rounds:3, exercises:4, note:"General fitness + stamina · RPE 7" },
+  intermediatePlus:{ work:40, rest:30, rounds:3, exercises:5, note:"Repeated-effort capacity · RPE 7–8" },
+  advanced:{ work:45, rest:30, rounds:3, exercises:5, note:"Strong general conditioning · RPE 7–8" },
+  advancedFull:{ work:60, rest:30, rounds:3, exercises:6, note:"Serious conditioning session · RPE 8" }
+};
+
+const presetSelect = document.getElementById("preset");
+const presetNote = document.getElementById("presetNote");
+const workInput = document.getElementById("workTime");
+const restInput = document.getElementById("restTime");
+const roundsInput = document.getElementById("rounds");
+const exerciseCountInput = document.getElementById("exerciseCount");
+
+presetSelect.addEventListener("change", applyPreset);
+
+function applyPreset(){
+  const selected = presetSelect.value;
+  if(selected==="custom"){
+    presetNote.textContent = "Custom circuit — choose your own values.";
+    return;
+  }
+  const preset = PRESETS[selected];
+  workInput.value = preset.work;
+  restInput.value = preset.rest;
+  roundsInput.value = preset.rounds;
+  exerciseCountInput.value = preset.exercises;
+  presetNote.textContent = preset.note;
+  renderExerciseInputs();
+}
+
+exerciseCountInput.addEventListener("input", ()=>{
+  presetSelect.value = "custom";
+  presetNote.textContent = "Custom circuit — choose your own values.";
+  renderExerciseInputs();
+});
+
+function renderExerciseInputs(suppliedValues=null){
+  let count = parseInt(exerciseCountInput.value);
+  if(!count || count<1) count=1;
+  if(count>20) count=20;
+
+  const container = document.getElementById("exerciseList");
+  const oldValues = [...document.querySelectorAll(".exercise-input")].map(input=>input.value);
+  container.innerHTML = "";
+
+  for(let i=0;i<count;i++){
+    const row = document.createElement("div");
+    row.className = "exercise-row";
+    let value = "";
+    if(suppliedValues && suppliedValues[i]) value = suppliedValues[i];
+    else value = oldValues[i] || "";
+    row.innerHTML = `<div class="exercise-number">${String(i+1).padStart(2,"0")}</div><input type="text" class="exercise-input" placeholder="Exercise ${i+1}" value="${escapeHtml(value)}">`;
+    container.appendChild(row);
+  }
+}
+
+function escapeHtml(value){
+  return String(value).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+renderExerciseInputs();
+
+/* CIRCUIT TIMER STATE */
+let exercises = [];
+let workSeconds = 30, restSeconds = 30, totalRounds = 3;
+let currentExercise = 0, currentRound = 1;
+let phase = "work";
+let remaining = 30, phaseTotal = 30;
+let paused = false;
+let animationFrame = null, phaseStartTime = 0;
+
+const COUNTDOWN_SECONDS = 10;
+
+function startWorkout(){
+  workSeconds = Math.max(1, parseInt(workInput.value) || 1);
+  restSeconds = Math.max(0, parseInt(restInput.value) || 0);
+  totalRounds = Math.max(1, parseInt(roundsInput.value) || 1);
+
+  exercises = [...document.querySelectorAll(".exercise-input")]
+    .map(input=>input.value.trim())
+    .map((name,index)=> name || `Exercise ${index+1}`);
+
+  if(exercises.length===0) return;
+
+  /* Circuit begins with a 10-second get-ready countdown before Exercise 1. */
+  currentExercise = 0; currentRound = 1;
+  phase = "countdown";
+  phaseTotal = COUNTDOWN_SECONDS;
+  remaining = COUNTDOWN_SECONDS;
+  paused = false;
+
+  document.getElementById("setup").style.display = "none";
+  document.getElementById("timerScreen").style.display = "block";
+  document.getElementById("finish").style.display = "none";
+  document.querySelector(".timer-card").style.display = "block";
+
+  resetTimerVisuals();
+  updateDisplay();
+  startSmoothTimer();
+}
+
+function startSmoothTimer(){
+  cancelAnimationFrame(animationFrame);
+  phaseStartTime = performance.now();
+  animationFrame = requestAnimationFrame(animateTimer);
+}
+
+function animateTimer(timestamp){
+  if(paused){
+    animationFrame = requestAnimationFrame(animateTimer);
+    return;
+  }
+  const elapsed = (timestamp - phaseStartTime) / 1000;
+  const left = Math.max(0, phaseTotal - elapsed);
+  remaining = Math.ceil(left);
+  updateDisplaySmooth(left);
+
+  if(left<=0){
+    advance();
+    if(document.getElementById("timerScreen").style.display !== "none"){
+      phaseStartTime = performance.now();
+    }
+  }
+  animationFrame = requestAnimationFrame(animateTimer);
+}
+
+function advance(){
+  /* Countdown finished — move into the first exercise at full work duration. */
+  if(phase==="countdown"){
+    phase = "work";
+    phaseTotal = workSeconds;
+    remaining = workSeconds;
+    updateDisplay();
+    return;
+  }
+
+  if(phase==="work"){
+    const isLastExercise = currentExercise === exercises.length-1;
+    const isLastRound = currentRound === totalRounds;
+
+    if(isLastExercise && isLastRound){
+      finishWorkout();
+      return;
+    }
+
+    if(restSeconds>0){
+      phase = "rest";
+      phaseTotal = restSeconds;
+      remaining = restSeconds;
+    } else {
+      moveToNextExercise();
+    }
+    updateDisplay();
+    return;
+  }
+
+  if(phase==="rest"){
+    moveToNextExercise();
+    updateDisplay();
+  }
+}
+
+function moveToNextExercise(){
+  currentExercise++;
+  if(currentExercise >= exercises.length){
+    currentExercise = 0;
+    currentRound++;
+  }
+  phase = "work";
+  phaseTotal = workSeconds;
+  remaining = workSeconds;
+}
+
+function updateDisplay(){ updateDisplaySmooth(remaining); }
+
+function updateDisplaySmooth(exactRemaining){
+  const name = document.getElementById("exerciseName");
+  const phaseElement = document.getElementById("phase");
+  const time = document.getElementById("time");
+  const status = document.getElementById("timerStatus");
+  const info = document.getElementById("roundInfo");
+  const progress = document.getElementById("progressBar");
+  const nextName = document.getElementById("nextName");
+
+  if(phase==="countdown"){
+    status.textContent = "Get Ready";
+    name.textContent = "Get Ready";
+    phaseElement.textContent = "Starting In";
+    phaseElement.className = "phase countdown";
+    info.textContent = `First up: ${exercises[0]}`;
+  } else {
+    name.textContent = exercises[currentExercise];
+    status.textContent = `Circuit ${currentRound} of ${totalRounds}`;
+    info.textContent = `Exercise ${currentExercise+1} of ${exercises.length}`;
+
+    if(phase==="work"){
+      phaseElement.textContent = "Work";
+      phaseElement.className = "phase work";
+    } else if(phase==="rest"){
+      phaseElement.textContent = "Rest";
+      phaseElement.className = "phase rest";
+    }
+  }
+
+  nextName.textContent = getNextExercise();
+  time.textContent = formatTime(Math.max(0, Math.ceil(exactRemaining)));
+
+  const percent = Math.max(0, Math.min(1, exactRemaining/phaseTotal));
+  progress.style.transform = `scaleX(${percent})`;
+}
+
+function getNextExercise(){
+  if(phase==="countdown") return exercises[0];
+  if(phase==="work"){
+    if(restSeconds>0) return "Rest";
+    return getFollowingExercise();
+  }
+  if(phase==="rest") return getFollowingExercise();
+  return "—";
+}
+
+function getFollowingExercise(){
+  const nextIndex = currentExercise+1;
+  if(nextIndex < exercises.length) return exercises[nextIndex];
+  if(currentRound < totalRounds) return exercises[0];
+  return "Session Complete";
+}
+
+function formatTime(seconds){
+  const mins = Math.floor(seconds/60);
+  const secs = seconds%60;
+  if(mins>0) return `${mins}:${String(secs).padStart(2,"0")}`;
+  return String(secs);
+}
+
+function togglePause(){
+  paused = !paused;
+  const pauseButton = document.getElementById("pauseButton");
+  pauseButton.textContent = paused ? "Resume" : "Pause";
+  if(!paused){
+    phaseStartTime = performance.now() - (phaseTotal - remaining)*1000;
+  }
+}
+
+function skipInterval(){
+  if(phase==="countdown"){
+    phase = "work";
+    phaseTotal = workSeconds;
+    remaining = workSeconds;
+  }
+  else if(phase==="work"){
+    if(currentExercise===exercises.length-1 && currentRound===totalRounds){
+      finishWorkout();
+      return;
+    }
+    if(restSeconds>0){
+      phase = "rest";
+      phaseTotal = restSeconds;
+      remaining = restSeconds;
+    } else {
+      moveToNextExercise();
+    }
+  }
+  else if(phase==="rest"){
+    moveToNextExercise();
+  }
+
+  phaseStartTime = performance.now();
+  updateDisplay();
+}
+
+function stopWorkout(){
+  cancelAnimationFrame(animationFrame);
+  animationFrame = null;
+  paused = false;
+  document.getElementById("timerScreen").style.display = "none";
+  document.getElementById("setup").style.display = "block";
+}
+
+function finishWorkout(){
+  cancelAnimationFrame(animationFrame);
+  animationFrame = null;
+
+  document.getElementById("timerStatus").textContent = "Complete";
+  document.getElementById("exerciseName").style.display = "none";
+  document.getElementById("phase").style.display = "none";
+  document.getElementById("time").style.display = "none";
+  document.querySelector(".progress").style.display = "none";
+  document.getElementById("nextUp").style.display = "none";
+  document.getElementById("roundInfo").style.display = "none";
+  document.querySelector(".timer-controls").style.display = "none";
+  document.getElementById("finish").style.display = "block";
+
+  document.getElementById("summary").innerHTML = `
+    <div class="summary-title">Session complete</div>
+    <p><strong>${exercises.length}</strong> exercises</p>
+    <p><strong>${totalRounds}</strong> circuit rounds</p>
+    <p><strong>${workSeconds}s</strong> work / <strong>${restSeconds}s</strong> rest</p>
+  `;
+}
+
+function resetWorkout(){
+  cancelAnimationFrame(animationFrame);
+  animationFrame = null;
+  paused = false;
+  document.getElementById("timerScreen").style.display = "none";
+  document.getElementById("setup").style.display = "block";
+  resetTimerVisuals();
+}
+
+function resetTimerVisuals(){
+  document.getElementById("exerciseName").style.display = "block";
+  document.getElementById("phase").style.display = "inline-block";
+  document.getElementById("time").style.display = "block";
+  document.querySelector(".progress").style.display = "block";
+  document.getElementById("nextUp").style.display = "flex";
+  document.getElementById("roundInfo").style.display = "block";
+  document.querySelector(".timer-controls").style.display = "flex";
+  document.getElementById("pauseButton").textContent = "Pause";
+  document.getElementById("progressBar").style.transform = "scaleX(1)";
+}
+
+applyPreset();
+</script>
+</body>
+</html>
