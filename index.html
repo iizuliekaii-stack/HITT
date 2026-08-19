@@ -40,6 +40,14 @@ button, input, select{ font:inherit; }
 .wheel-page h1{ font-family:Bungee,sans-serif; font-size:clamp(28px,5.5vw,44px); text-align:center; margin:0 0 6px; }
 .wheel-sub{ text-align:center; color:var(--muted); font-size:14px; line-height:1.5; margin:0 auto 26px; max-width:520px; }
 
+.mode-toggle{ display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+.mode-btn{ font-family:"Space Grotesk",sans-serif; font-size:12.5px; font-weight:600; color:var(--muted); background:#1b1725; border:1px solid #3a304f; border-radius:999px; padding:9px 18px; cursor:pointer; transition:.15s; }
+.mode-btn:hover{ border-color:var(--gold); color:var(--gold); }
+.mode-btn.active{ background:var(--gold); color:#241705; border-color:var(--gold); }
+
+.picker-select{ width:100%; background:var(--bg2); border:1px solid var(--cat-color, #3c3252); color:var(--text); border-radius:6px; padding:9px 6px; font-family:"Space Grotesk",sans-serif; font-size:12.5px; text-align:center; text-align-last:center; cursor:pointer; }
+.picker-select:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+
 .cabinet{ background:linear-gradient(180deg, #2a2338 0%, var(--panel) 12%, var(--panel) 100%); border-radius:22px; padding:22px; border:1px solid #352b49; box-shadow:0 30px 60px -20px rgba(0,0,0,.6); display:flex; gap:18px; }
 .machine-body{ flex:1; min-width:0; }
 
@@ -211,18 +219,28 @@ select, input{ width:100%; border:1px solid var(--sand); background:var(--paper)
   <div class="wheel-stage">
     <p class="eyebrow">Today's Circuit</p>
     <h1>The Wheel Decides</h1>
-    <p class="wheel-sub">Four move types. Four exercises. Let the wheel build your circuit.</p>
+    <p class="wheel-sub">Four move types. Four exercises. Let the wheel build your circuit — or pick your own.</p>
+
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="modeSpinBtn" onclick="setMode('spin', this)">🎰 Random Spin</button>
+      <button class="mode-btn" id="modeCustomBtn" onclick="setMode('custom', this)">🎯 Pick Your Own</button>
+    </div>
 
     <div class="cabinet">
       <div class="machine-body">
         <div class="reels" id="reels"></div>
+        <div class="reels" id="pickerReels" style="display:none;"></div>
 
-        <div class="wheel-controls">
+        <div class="wheel-controls" id="spinControls">
           <button class="spin-btn" id="spinBtn">PULL</button>
           <div class="reroll-wrap">
             <button class="reroll-btn" id="rerollBtn">Reroll</button>
             <span class="reroll-count" id="rerollCount">2 left</span>
           </div>
+        </div>
+
+        <div class="wheel-controls" id="pickerControls" style="display:none;">
+          <button class="spin-btn" id="usePicksBtn" onclick="useCustomPicks()">Use These Picks</button>
         </div>
 
         <div class="wheel-transfer" id="wheelTransfer">
@@ -236,7 +254,7 @@ select, input{ width:100%; border:1px solid var(--sand); background:var(--paper)
         </div>
       </div>
 
-      <div class="lever-track">
+      <div class="lever-track" id="leverTrack">
         <div class="lever" id="lever">
           <div class="lever-knob"></div>
         </div>
@@ -456,6 +474,47 @@ CATEGORIES.forEach(category=>{
   reel.innerHTML = `<div class="reel-label">${category.label}</div><div class="reel-window"><div class="reel-value">—</div></div><div class="reel-dot"></div>`;
   reelsEl.appendChild(reel);
 });
+
+/* PICK-YOUR-OWN REELS */
+const pickerReelsEl = document.getElementById("pickerReels");
+const spinControls = document.getElementById("spinControls");
+const pickerControls = document.getElementById("pickerControls");
+const leverTrack = document.getElementById("leverTrack");
+
+CATEGORIES.forEach((category, idx)=>{
+  const reel = document.createElement("div");
+  reel.className = "reel";
+  reel.style.setProperty("--cat-color", category.color);
+  const options = category.moves.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join("");
+  reel.innerHTML = `<div class="reel-label">${category.label}</div><div class="reel-window"><select class="picker-select" data-index="${idx}">${options}</select></div><div class="reel-dot"></div>`;
+  pickerReelsEl.appendChild(reel);
+});
+
+function setMode(mode, button){
+  document.querySelectorAll(".mode-btn").forEach(b=>b.classList.remove("active"));
+  button.classList.add("active");
+  wheelTransfer.classList.remove("show");
+
+  if(mode==="custom"){
+    reelsEl.style.display = "none";
+    pickerReelsEl.style.display = "grid";
+    spinControls.style.display = "none";
+    pickerControls.style.display = "flex";
+    leverTrack.style.display = "none";
+  } else {
+    reelsEl.style.display = "grid";
+    pickerReelsEl.style.display = "none";
+    spinControls.style.display = "flex";
+    pickerControls.style.display = "none";
+    leverTrack.style.display = "flex";
+  }
+}
+
+function useCustomPicks(){
+  const selects = pickerReelsEl.querySelectorAll(".picker-select");
+  wheelResults = [...selects].map(select=>select.value);
+  showTransferConfirmation();
+}
 
 function randomMove(category){ return category.moves[Math.floor(Math.random()*category.moves.length)]; }
 
