@@ -116,6 +116,10 @@ button, input, select{ font:inherit; }
 .trainer-eyebrow{ font-family:"IBM Plex Mono",monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--moss-deep); margin-bottom:7px; }
 .trainer-page h1{ font-family:Fraunces,serif; font-size:36px; line-height:1.05; margin:0 0 9px; }
 .trainer-header p{ color:var(--ink-soft); font-size:14px; line-height:1.5; margin:0; }
+.trainer-header-row{ display:flex; align-items:flex-start; justify-content:space-between; gap:14px; flex-wrap:wrap; }
+.sound-toggle{ font-family:"IBM Plex Mono",monospace; font-size:11px; font-weight:600; border-radius:999px; padding:8px 14px; cursor:pointer; border:1px solid var(--sand); background:transparent; color:var(--ink-soft); white-space:nowrap; flex-shrink:0; }
+.sound-toggle:hover{ border-color:var(--moss-deep); color:var(--moss-deep); }
+.sound-toggle.muted{ opacity:.65; }
 .trainer-card{ background:var(--paper2); border:1px solid var(--sand-line); padding:22px; margin-bottom:18px; border-radius:3px; }
 .trainer-card h2{ font-family:Fraunces,serif; font-size:20px; margin:0 0 5px; }
 .trainer-sub{ color:var(--ink-soft); font-size:13px; line-height:1.5; margin:0 0 18px; }
@@ -360,7 +364,10 @@ select, input{ width:100%; border:1px solid var(--sand); background:var(--paper)
   <div class="trainer-wrap">
     <header class="trainer-header">
       <div class="trainer-eyebrow">Work · Rest · Repeat</div>
-      <h1>Circuit Trainer</h1>
+      <div class="trainer-header-row">
+        <h1>Circuit Trainer</h1>
+        <button class="sound-toggle" id="soundToggleSetup" onclick="toggleSound()">🔊 Sound</button>
+      </div>
       <p>Choose a training-guide preset or build your own circuit. Wheel results can be transferred directly into your exercise list.</p>
     </header>
 
@@ -428,6 +435,7 @@ select, input{ width:100%; border:1px solid var(--sand); background:var(--paper)
         <div class="timer-controls">
           <button class="control" onclick="togglePause()" id="pauseButton">Pause</button>
           <button class="control" onclick="skipInterval()">Skip</button>
+          <button class="control" onclick="toggleSound()" id="soundToggleTimer">🔊 Sound</button>
           <button class="control" onclick="stopWorkout()">Stop</button>
         </div>
 
@@ -686,6 +694,56 @@ let animationFrame = null, phaseStartTime = 0;
 
 const COUNTDOWN_SECONDS = 10;
 
+/* SOUND */
+let audioCtx = null;
+let soundEnabled = true;
+let lastCountdownSecond = null;
+
+function getAudioCtx(){
+  if(!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if(audioCtx.state === "suspended"){
+    audioCtx.resume();
+  }
+  return audioCtx;
+}
+
+function playTone(frequency, duration, type){
+  if(!soundEnabled) return;
+  const ctx = getAudioCtx();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = type || "sine";
+  osc.frequency.value = frequency;
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.28, ctx.currentTime + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.start();
+  osc.stop(ctx.currentTime + duration + 0.02);
+}
+
+function playTick(){ playTone(660, 0.08, "square"); }
+function playWorkStart(){ playTone(880, 0.18, "sine"); }
+function playRestStart(){ playTone(440, 0.18, "sine"); }
+function playFinish(){
+  playTone(660, 0.14, "sine");
+  setTimeout(()=>playTone(880, 0.14, "sine"), 150);
+  setTimeout(()=>playTone(1100, 0.24, "sine"), 300);
+}
+
+function toggleSound(){
+  soundEnabled = !soundEnabled;
+  document.querySelectorAll("#soundToggleSetup, #soundToggleTimer").forEach(btn=>{
+    if(!btn) return;
+    btn.textContent = soundEnabled ? "🔊 Sound" : "🔇 Muted";
+    btn.classList.toggle("muted", !soundEnabled);
+  });
+  if(soundEnabled) getAudioCtx();
+}
+
 function startWorkout(){
   workSeconds = Math.max(1, parseInt(workInput.value) || 1);
   restSeconds = Math.max(0, parseInt(restInput.value) || 0);
@@ -703,6 +761,8 @@ function startWorkout(){
   phaseTotal = COUNTDOWN_SECONDS;
   remaining = COUNTDOWN_SECONDS;
   paused = false;
+  lastCountdownSecond = null;
+  if(soundEnabled) getAudioCtx();
 
   document.getElementById("setup").style.display = "none";
   document.getElementById("timerScreen").style.display = "block";
@@ -730,6 +790,14 @@ function animateTimer(timestamp){
   remaining = Math.ceil(left);
   updateDisplaySmooth(left);
 
+  if(phase==="countdown"){
+    const wholeSecond = Math.ceil(left);
+    if(wholeSecond !== lastCountdownSecond){
+      lastCountdownSecond = wholeSecond;
+      if(wholeSecond>=1 && wholeSecond<=3) playTick();
+    }
+  }
+
   if(left<=0){
     advance();
     if(document.getElementById("timerScreen").style.display !== "none"){
@@ -745,6 +813,7 @@ function advance(){
     phase = "work";
     phaseTotal = workSeconds;
     remaining = workSeconds;
+    playWorkStart();
     updateDisplay();
     return;
   }
@@ -762,8 +831,10 @@ function advance(){
       phase = "rest";
       phaseTotal = restSeconds;
       remaining = restSeconds;
+      playRestStart();
     } else {
       moveToNextExercise();
+      playWorkStart();
     }
     updateDisplay();
     return;
@@ -771,6 +842,7 @@ function advance(){
 
   if(phase==="rest"){
     moveToNextExercise();
+    playWorkStart();
     updateDisplay();
   }
 }
@@ -862,6 +934,7 @@ function skipInterval(){
     phase = "work";
     phaseTotal = workSeconds;
     remaining = workSeconds;
+    playWorkStart();
   }
   else if(phase==="work"){
     if(currentExercise===exercises.length-1 && currentRound===totalRounds){
@@ -872,12 +945,15 @@ function skipInterval(){
       phase = "rest";
       phaseTotal = restSeconds;
       remaining = restSeconds;
+      playRestStart();
     } else {
       moveToNextExercise();
+      playWorkStart();
     }
   }
   else if(phase==="rest"){
     moveToNextExercise();
+    playWorkStart();
   }
 
   phaseStartTime = performance.now();
@@ -895,6 +971,7 @@ function stopWorkout(){
 function finishWorkout(){
   cancelAnimationFrame(animationFrame);
   animationFrame = null;
+  playFinish();
 
   document.getElementById("timerStatus").textContent = "Complete";
   document.getElementById("exerciseName").style.display = "none";
